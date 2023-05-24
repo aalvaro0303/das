@@ -1,0 +1,180 @@
+/*
+ * Nombre de los alumnos: Alvaro Elizalde Romero y Alejandro Vida Ramírez de Arellano
+ *
+ * Usuario de los alumnos: E23 y E67
+ *
+ * Comenta la representación que has escogido. Indica el coste de TODAS las operaciones
+ * 
+ * Con respecto a la entrega de clase sentimos que no nos daba tiempo y nos volvimos un poco locos con los finds. Hemos trabajado mucho mas con la funcion count y at de los mapas para facilitarnos la vida.
+ * Utilizamos unordered map ya que no necesitamos mantener el orden ni en los nombres de los profesores ni en el de los alumnos pero si lo necesitaremos para los alumnos que vayan a examen
+ * y por eso utilizamos un set<Alumnos> como valor del mapa de profesores. También con respecto a la entrega del lab en el mapa de alumnos guardamos su profesor a parte de su puntuacion con el 
+ * struct InfoAlumno. 
+ */
+
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdexcept>
+#include <vector>
+#include <unordered_map>
+#include <set>
+
+
+using namespace std;
+
+using Alumno = string;
+using Profesor = string;
+
+class Autoescuela {
+private:
+    
+    struct InfoAlumno {
+        InfoAlumno() : profesor(""), puntuacion(0) {}
+        Profesor profesor;
+        int puntuacion;
+    };
+
+    unordered_map<Profesor, set<Alumno>> profesores;
+    unordered_map<Alumno, InfoAlumno> alumnos;
+
+
+
+public:
+    //O(log n), siendo n la cantidad de elementos en el set de alumnos de profesores.
+    void alta(const Alumno &alumno, const Profesor &profesor) {
+        if(alumnos.count(alumno)){
+            Alumno profe_anterior = alumnos.at(alumno).profesor;
+            profesores.at(profe_anterior).erase(alumno);
+        }
+        profesores[profesor].insert(alumno);
+        alumnos[alumno].profesor = profesor;
+
+    }
+    // Coste O(1) ya que tanto count como at tienen conste constante promedio en unordered_map y O(n) en el caso peor siendo n la cantidad de elementos en alumnos en caso de colisiones
+    bool es_alumno(const Alumno &alumno, const Profesor &profesor) const {
+        
+        return alumnos.count(alumno) && alumnos.at(alumno).profesor == profesor;
+    }
+    // Coste O(1) promedio ya que la consulta en un unordered_map es constante aunque O(n) en el caso peor siendo n la cantidad de elementos en alumnos en caso de colisiones
+    int puntuacion(const Alumno &alumno) const {     
+        auto it = alumnos.find(alumno);
+        if (it == alumnos.end()) {
+            throw std::domain_error("El alumno A no esta matriculado");
+        }
+        return it->second.puntuacion;
+    }
+    // Mismo coste que int puntuacion(const Alumno & alumno) const
+
+    void actualizar(const Alumno &alumno, int puntos) {
+        auto it = alumnos.find(alumno);
+        if (it == alumnos.end()) {
+            throw std::domain_error("El alumno A no esta matriculado");
+        }
+        it->second.puntuacion += puntos;
+    }
+
+    // Coste promedio O(a log n) siendo a la cantidad de alumnos que van a examen y n los alumnos de ese profesor aunque en el peor caso sería O(n log n) si todos los alumnos van a examen
+    vector<Alumno> examen(const Profesor &profesor, int N) const {
+       
+        vector<Alumno> salida;
+        if (!profesores.count(profesor))
+            return salida;
+       
+        auto als = profesores.at(profesor);
+        auto it = als.begin();
+        while (it != als.end()) {
+            if (alumnos.at(*it).puntuacion >= N) {
+                salida.push_back(*it);
+            }
+            it++;
+        }
+        return salida;
+    }
+    // Coste promedio O(1) ya que la insercion y borrado en unordered_map es constante aunque O(n) en el caso peor
+    void aprobar(const Alumno &alumno) {
+        auto it = alumnos.find(alumno);
+        if (it == alumnos.end()) {
+            throw std::domain_error("El alumno A no esta matriculado");
+        }
+        profesores[it->second.profesor].erase(alumno);
+        alumnos.erase(alumno);
+        
+    }
+
+};
+
+/* ----------------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------------- */
+
+bool resuelveCaso() {
+    string op;
+    cin >> op;
+    if (!cin)
+        return false;
+    Autoescuela autoesc;
+
+    while (op != "FIN") {
+        try {
+            if (op == "alta") {
+                string alumno, profesor;
+                cin >> alumno >> profesor;
+                autoesc.alta(alumno, profesor);
+            } else if (op == "es_alumno") {
+                string alumno, profesor;
+                cin >> alumno >> profesor;
+                if (autoesc.es_alumno(alumno, profesor)) {
+                    cout << alumno << " es alumno de " << profesor << endl;
+                } else {
+                    cout << alumno << " no es alumno de " << profesor << endl;
+                }
+            } else if (op == "puntuacion") {
+                string alumno;
+                cin >> alumno;
+                int puntuacion = autoesc.puntuacion(alumno);
+                cout << "Puntuacion de " << alumno << ": " << puntuacion << endl;
+            } else if (op == "actualizar") {
+                string alumno;
+                int puntuacion;
+                cin >> alumno >> puntuacion;
+                autoesc.actualizar(alumno, puntuacion);
+            } else if (op == "examen") {
+                string profesor;
+                int minimo_puntos;
+                cin >> profesor >> minimo_puntos;
+                cout << "Alumnos de " << profesor << " a examen:" << endl;
+                for (const string &nombre: autoesc.examen(profesor, minimo_puntos)) {
+                    cout << nombre << endl;
+                }
+            } else if (op == "aprobar") {
+                string alumno;
+                cin >> alumno;
+                autoesc.aprobar(alumno);
+            }
+        } catch (std::exception &e) {
+            cout << "ERROR" << endl;
+        }
+
+        cin >> op;
+    }
+
+    cout << "---\n";
+    return true;
+}
+
+
+
+int main() {
+#ifndef DOMJUDGE
+  std::ifstream in("datos.txt");
+  auto cinbuf = std::cin.rdbuf(in.rdbuf());
+#endif
+
+  while (resuelveCaso()) {  }
+
+#ifndef DOMJUDGE
+  std::cin.rdbuf(cinbuf);
+  system("PAUSE");
+#endif
+  return 0;
+}
